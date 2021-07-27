@@ -1,0 +1,3 @@
+null
+dork1example.php?id=
+dork2example.php?id=

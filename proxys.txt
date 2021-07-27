@@ -1,0 +1,10 @@
+
+ip:port
+ip:port
+ip:port
+
+or 
+
+ip:port:user:password
+ip:port:user:password
+ip:port:user:password
