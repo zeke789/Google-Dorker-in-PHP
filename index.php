@@ -313,4 +313,5 @@ for ($i=1; $i < count($dorks); $i++) {  // For each dork
   }
   file_put_contents('passed_dork.txt', '$i: ' . $i . ' - dorK: ' . $dorks[$i] . PHP_EOL,FILE_APPEND);
   delayRequest($delay);
-}
+} 
+
