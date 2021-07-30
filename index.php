@@ -163,13 +163,14 @@ function saveErr1($htpcode,$i,$e,$proxy,$data){
 
 function saveErrNoResult($htpcode,$i,$e,$data){
   $err=BEGIN_DEBUG.'http_code ' . $htpcode . PHP_EOL .'iteration_num_i '.$i.PHP_EOL.'proxy_num_e '. $e .PHP_EOL.$data.END_DEBUG;
-  file_put_contents('err/no_results.txt', $err,FILE_APPEND);
+  if($i === "xx_test") file_put_contents('err/no_results_to_test.txt', $err,FILE_APPEND); else file_put_contents('err/no_results.txt', $err,FILE_APPEND);
 }
 
 function saveNextErr($httpcode,$i,$ix,$e,$data){
   $err= BEGIN_DEBUG.'http_code='. $httpcode . PHP_EOL .'iteration_num_i='.$i.PHP_EOL. 'iteration_num_ix='.$ix.PHP_EOL.'proxy_num_ex='. $e .PHP_EOL.$data.END_DEBUG;
   file_put_contents('err/next_error.txt',$err,FILE_APPEND);
 }
+
 
 function getUrls($data){ 
   preg_match_all('(class="kCrYT"><a href="(.*)">)siU', $data, $m1);
@@ -204,8 +205,8 @@ function getNextPage($data){
   $next1 = getStr($data,'<a class="pn" href="','" id="pnnex');
   if ($next1 != 'errr') return 'https://www.google.com' . $next1;
   
-  $next2 = getStr($data,'<a class="fl" href="','"');  #preg_match_all('((.*))siU', $data, $next3);
-  if ($next2 != 'errr') return   'https://www.google.com' .$next2; #.substr($next2, 0, strlen($next2) - 2);
+  $next2 = getStr($data,'<a class="fl" href="','"');
+  if ($next2 != 'errr') return   'https://www.google.com' .$next2;
   
   $next3 = getStr($data,'<a class="nBDE1b G5eFlf" href="','"');
   if ($next3 != 'errr') return 'https://www.google.com' . $next3;
@@ -217,18 +218,15 @@ function getNextPage($data){
 }
 
 function haveResults($data){
-    $errorTxts = [
-      'did not match any documents','No se han encontrado resultados para','no obtuvo ningÃºn resultado','no obtuvo ningún resultado'
-    ];
-    foreach ($errorTxts as $errTxt) {
-      if (preg_match('/$errTxt/', $data)) return false;
+    $errorTxts = [ 'did not match any documents','No se han encontrado resultados para','no obtuvo ningÃºn resultado','no obtuvo ningún resultado' ];
+    /* foreach ($errorTxts as $errTxt) { if (preg_match('/$errTxt/', $data)) return false; } */
+	foreach ($errorTxts as $errTxt) {
+      if ( strpos($data,$errTxt) !== false ) return false; 
     }
     return true;
 }
 
-function saveEndTest($data,$proxy,$num){
-  file_put_contents('err/end_test.txt', BEGIN_DEBUG.'num: '.$num .PHP_EOL . 'proxy: '.$proxy .PHP_EOL. $data . PHP_EOL. END_DEBUG,FILE_APPEND);
-}
+
 
 $pref = [ '%20-site%3Aorg%20-site%3Aedu%20-site%3Ajp%20inurl%3Ahttps', '%20inurl%3Ahttps' ]; 
 
@@ -239,10 +237,11 @@ $proxyFile = "./proxys.txt";
 $proxyType = "http";  // socks4,socks5,http
 $proxyAuth = true;  // boolean
 $cookieFile = "./cook.txt";
-$dorkFile = "./dorks.txt";
+$dorkFile = "./dorks_july1_2021.txt";
 $blackDomains = ['.cn','.kr','.or.kr','.jp','.ru','.br','.tw','.de','.th','.nl','.fr','.cy','.com.cn','.co.cn','.co.kr','.com.kr','.co.jp','.co.tw'];
 $pages = 30;  // number of pages to scrape per dork
-$delay = 1; // delay requests, values 0 - 5 ( If you have few proxies leave it at 4  ) 
+$delay = 1; // delay requests, values 0 - 5 ( If you have few proxies leave it at 4 or 5 so you will not get easily blocked  ) 
+
 
 
       /****** BEGIN   ******/ 
@@ -267,9 +266,9 @@ for ($i=1; $i < count($dorks); $i++) {  // For each dork
   }
   $urls = getUrls($data); 
   if ( count($urls[0]) === 0 ) {
-    if (haveResults($data)) saveErrNoResult($htpcode,$i,$e,$data);
+    if (haveResults($data)) saveErrNoResult($htpcode,"xx_test","xx_test",$data);  // check the response..
     $e++;continue;
-  }else{ 
+  }else{
     save_urls($urls,$blackDomains);
   }
   
@@ -287,12 +286,10 @@ for ($i=1; $i < count($dorks); $i++) {  // For each dork
           $data = $curl->makeRequest('https://www.google.com/search?q='.$search.'&tbs=qdr:m&prmd=ivns&ei=rcpUXbfhFqaQggfCxLWoAw&start='.$start.'&sa=N');
           $httpcode=$curl->httpcode();
           $curl->cookies('');$curl->closee();
-          
           if($httpcode == 0){ 
               saveErr1($htpcode,'ix'.$ix,$e,'proxy='.$proxys[$e],$data);
               $ix--;$e++; continue;
           }
-          
           if ( !haveResults($data)  ) { // no results found
               $end = true; 
           }else{
@@ -300,16 +297,15 @@ for ($i=1; $i < count($dorks); $i++) {  // For each dork
               save_urls($urls,$blackDomains); 
               $next = getNextPage($data);
               if ($next === 'errr') {
-                if ($httpcode == 429 || $httpcode == 403 || $httpcode == 0) {
+                if ($httpcode == 429 || $httpcode == 403) {
                   saveErr1($httpcode,'ix'.$ix, $e,'proxy='.$proxys[$e],$data);
                   $ix--;$e++; continue;
                 }else{
-                  saveEndTest($data,$proxys[$e],2);
+				  saveErrNoResult($htpcode,"xx_test","xx_test",$data);
                   $end = true; 
                 }
               }
           }
-         #file_put_contents('passed2.txt','$ix:'. $ix . '-'.PHP_EOL,FILE_APPEND);
          delayRequest($delay); $e++;
     }else{
       break;
@@ -317,4 +313,4 @@ for ($i=1; $i < count($dorks); $i++) {  // For each dork
   }
   file_put_contents('passed_dork.txt', '$i: ' . $i . ' - dorK: ' . $dorks[$i] . PHP_EOL,FILE_APPEND);
   delayRequest($delay);
-}  
+}
